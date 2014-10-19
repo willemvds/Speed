@@ -45,7 +45,15 @@ func (rl RegionList) HitWhat(x int32, y int32) *EventRegion {
 const CARD_WIDTH = 100
 const CARD_HEIGHT = 180
 
+const (
+	INTERACTION_STATE_DEFAULT  = 0
+	INTERACTION_STATE_DRAGGING = 1
+)
+
 func main() {
+	interactionState := INTERACTION_STATE_DEFAULT
+	fmt.Println(interactionState)
+	var draggingWhat *EventRegion
 	res := sdl.Init(sdl.INIT_VIDEO)
 	log.Println(res)
 
@@ -113,7 +121,24 @@ func main() {
 			case *sdl.MouseButtonEvent:
 				fmt.Printf("[%d ms] MouseButton\ttype:%d\tid:%d\tx:%d\ty:%d\tbutton:%d\tstate:%d\n",
 					t.Timestamp, t.Type, t.Which, t.X, t.Y, t.Button, t.State)
-				fmt.Println(eventRegions.HitWhat(t.X, t.Y))
+				if t.Button == 1 {
+					what := eventRegions.HitWhat(t.X, t.Y)
+					if t.Type == 1025 {
+						log.Println("MOUSE DOWN. Grab something.")
+						if what != nil {
+							interactionState = INTERACTION_STATE_DRAGGING
+							draggingWhat = what
+						}
+					} else if t.Type == 1026 {
+						log.Println("MOUSE UP. Drop it.")
+						if draggingWhat != nil {
+							log.Println("DROPPING", draggingWhat, "ON", what)
+							interactionState = INTERACTION_STATE_DEFAULT
+							draggingWhat = nil
+						}
+
+					}
+				}
 			case *sdl.MouseWheelEvent:
 				fmt.Printf("[%d ms] MouseWheel\ttype:%d\tid:%d\tx:%d\ty:%d\n",
 					t.Timestamp, t.Type, t.Which, t.X, t.Y)
