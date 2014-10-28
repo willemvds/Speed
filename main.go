@@ -8,6 +8,45 @@ import (
 	"github.com/veandco/go-sdl2/sdl"
 )
 
+type Region interface {
+	X() int32
+	Y() int32
+	Width() int32
+	Height() int32
+}
+
+type Intersectable interface {
+	Intersect(Region) bool
+}
+
+type Point struct {
+	x, y int32
+}
+
+func (p Point) X() int32 {
+	return p.x
+}
+
+func (p Point) Y() int32 {
+	return p.y
+}
+
+func (p Point) Width() int32 {
+	return 1
+}
+
+func (p Point) Height() int32 {
+	return 1
+}
+
+func (p *Point) Intersect(target Region) bool {
+	if p.X() >= target.X() && p.X() <= target.X()+target.Width() &&
+		p.Y() >= target.Y() && p.Y() <= target.Y()+target.Height() {
+		return true
+	}
+	return false
+}
+
 type EventRegion struct {
 	Rect *sdl.Rect
 }
@@ -17,26 +56,42 @@ func NewEventRegion(x, y, width, height int32) *EventRegion {
 	return &er
 }
 
+func (er *EventRegion) X() int32 {
+	return er.Rect.X
+}
+
+func (er *EventRegion) Y() int32 {
+	return er.Rect.Y
+}
+
+func (er *EventRegion) Width() int32 {
+	return er.Rect.W
+}
+
+func (er *EventRegion) Height() int32 {
+	return er.Rect.H
+}
+
 func (er *EventRegion) SDLRect() *sdl.Rect {
 	return er.Rect
 }
 
-func (er *EventRegion) HitWhat(x int32, y int32) *EventRegion {
-	if x < er.Rect.X || x > er.Rect.X+er.Rect.W {
-		return nil
+func (er *EventRegion) Intersect(target Region) bool {
+	if target.X() > er.X()+er.Width() || target.X()+target.Width() < er.X() {
+		return false
 	}
-	if y < er.Rect.Y || y > er.Rect.Y+er.Rect.H {
-		return nil
+	if target.Y() > er.Y()+er.Height() || target.Y()+target.Height() < er.Y() {
+		return false
 	}
-	return er
+	return true
 }
 
 type RegionList []*EventRegion
 
-func (rl RegionList) HitWhat(x int32, y int32) *EventRegion {
+func (rl RegionList) HitWhat(r Region) Region {
 	for _, region := range rl {
-		if what := region.HitWhat(x, y); what != nil {
-			return what
+		if intersect := region.Intersect(r); intersect {
+			return region
 		}
 	}
 	return nil
@@ -53,7 +108,7 @@ const (
 func main() {
 	interactionState := INTERACTION_STATE_DEFAULT
 	fmt.Println(interactionState)
-	var draggingWhat *EventRegion
+	var draggingWhat Region
 	res := sdl.Init(sdl.INIT_VIDEO)
 	log.Println(res)
 
@@ -108,6 +163,20 @@ func main() {
 
 	renderer.Present()
 
+	var p1 = Point{50, 50}
+	var p2 = Point{50, 50}
+	var p3 = Point{53, 53}
+	var r1 *EventRegion = NewEventRegion(50, 50, 2, 2)
+	var r2 *EventRegion = NewEventRegion(52, 10, 100, 100)
+	fmt.Println(p1.Intersect(p2))
+	fmt.Println(p2.Intersect(p1))
+	fmt.Println(p3.Intersect(p1))
+	fmt.Println(p3.Intersect(p2))
+	fmt.Println(p3.Intersect(p3))
+	fmt.Println(r1.Intersect(p1))
+	fmt.Println(r1.Intersect(p3))
+	fmt.Println(r1.Intersect(r2))
+
 	var event sdl.Event
 	running := true
 	for running {
@@ -122,10 +191,12 @@ func main() {
 				fmt.Printf("[%d ms] MouseButton\ttype:%d\tid:%d\tx:%d\ty:%d\tbutton:%d\tstate:%d\n",
 					t.Timestamp, t.Type, t.Which, t.X, t.Y, t.Button, t.State)
 				if t.Button == 1 {
-					what := eventRegions.HitWhat(t.X, t.Y)
+					point := &Point{t.X, t.Y}
+					what := eventRegions.HitWhat(point)
 					if t.Type == 1025 {
 						log.Println("MOUSE DOWN. Grab something.")
 						if what != nil {
+							log.Println("GRABBING", what)
 							interactionState = INTERACTION_STATE_DRAGGING
 							draggingWhat = what
 						}
