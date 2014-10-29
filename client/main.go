@@ -4,8 +4,12 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"runtime"
+	"time"
 
 	"github.com/veandco/go-sdl2/sdl"
+
+	"github.com/willemvds/speed/game"
 )
 
 type Region interface {
@@ -143,13 +147,26 @@ Planned event region list structure:
 10..15: Player 2
 */
 func main() {
+	runtime.GOMAXPROCS(2)
+	TheGame := game.New()
+	fmt.Println(TheGame)
+	fmt.Println("P1:", TheGame.P1.Name())
+	fmt.Println("P2:", TheGame.P2.Name())
+	fmt.Println(TheGame.Start())
+	fmt.Println(TheGame.Start())
+	ticker := time.NewTicker(1 * time.Second)
+	go func() {
+		for {
+			<-ticker.C
+			fmt.Println("Game Duration: ", TheGame.Duration())
+		}
+	}()
 	interactionState := INTERACTION_STATE_DEFAULT
 	fmt.Println(interactionState)
 	var draggingWhat Region
 	res := sdl.Init(sdl.INIT_VIDEO)
 	log.Println(res)
 
-	//eventRegions := make([]*EventRegion, 0)
 	eventRegions := make(RegionList, 0)
 	var x int32
 	var y int32 = 20
