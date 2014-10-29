@@ -19,6 +19,15 @@ type Intersectable interface {
 	Intersect(Region) bool
 }
 
+type Event uint8
+
+const (
+	EVENT_GRAB Event = iota
+	EVENT_DROP
+)
+
+type EventCallback func(event Event)
+
 type Point struct {
 	x, y int32
 }
@@ -48,7 +57,8 @@ func (p *Point) Intersect(target Region) bool {
 }
 
 type EventRegion struct {
-	Rect *sdl.Rect
+	Rect          *sdl.Rect
+	eventCallback EventCallback
 }
 
 func NewEventRegion(x, y, width, height int32) *EventRegion {
@@ -76,6 +86,16 @@ func (er *EventRegion) SDLRect() *sdl.Rect {
 	return er.Rect
 }
 
+func (er *EventRegion) SetEventCallback(cb EventCallback) {
+	er.eventCallback = cb
+}
+
+func (er *EventRegion) Trigger(event Event) {
+	if er.eventCallback != nil {
+		er.eventCallback(event)
+	}
+}
+
 func (er *EventRegion) Intersect(target Region) bool {
 	if target.X() > er.X()+er.Width() || target.X()+target.Width() < er.X() {
 		return false
@@ -88,7 +108,7 @@ func (er *EventRegion) Intersect(target Region) bool {
 
 type RegionList []*EventRegion
 
-func (rl RegionList) HitWhat(r Region) Region {
+func (rl RegionList) HitWhat(r Region) *EventRegion {
 	for _, region := range rl {
 		if intersect := region.Intersect(r); intersect {
 			return region
@@ -105,6 +125,23 @@ const (
 	INTERACTION_STATE_DRAGGING = 1
 )
 
+func POINTLESS_EVENT_HANDLER(ev Event) {
+	fmt.Println("Apparently this event occured:", ev)
+}
+
+func GetEventCallback(id int) EventCallback {
+	return func(ev Event) {
+		fmt.Printf("[%d] Apparently this event occured: %d\n", id, ev)
+	}
+}
+
+/*
+Planned event region list structure:
+0..1: Center
+2..3: Sides
+4..9: Player 1
+10..15: Player 2
+*/
 func main() {
 	interactionState := INTERACTION_STATE_DEFAULT
 	fmt.Println(interactionState)
@@ -118,13 +155,17 @@ func main() {
 	var y int32 = 20
 	for i := 0; i < 8; i++ {
 		x = int32(80 + (i*CARD_WIDTH + i*10))
-		eventRegions = append(eventRegions, NewEventRegion(x, y, CARD_WIDTH, CARD_HEIGHT))
+		er := NewEventRegion(x, y, CARD_WIDTH, CARD_HEIGHT)
+		er.SetEventCallback(POINTLESS_EVENT_HANDLER)
+		eventRegions = append(eventRegions, er)
 	}
 
 	y = 520
 	for i := 0; i < 8; i++ {
 		x = int32(80 + (i*CARD_WIDTH + i*10))
-		eventRegions = append(eventRegions, NewEventRegion(x, y, CARD_WIDTH, CARD_HEIGHT))
+		er := NewEventRegion(x, y, CARD_WIDTH, CARD_HEIGHT)
+		er.SetEventCallback(GetEventCallback(i))
+		eventRegions = append(eventRegions, er)
 	}
 
 	y = 280
@@ -163,20 +204,6 @@ func main() {
 
 	renderer.Present()
 
-	var p1 = Point{50, 50}
-	var p2 = Point{50, 50}
-	var p3 = Point{53, 53}
-	var r1 *EventRegion = NewEventRegion(50, 50, 2, 2)
-	var r2 *EventRegion = NewEventRegion(52, 10, 100, 100)
-	fmt.Println(p1.Intersect(p2))
-	fmt.Println(p2.Intersect(p1))
-	fmt.Println(p3.Intersect(p1))
-	fmt.Println(p3.Intersect(p2))
-	fmt.Println(p3.Intersect(p3))
-	fmt.Println(r1.Intersect(p1))
-	fmt.Println(r1.Intersect(p3))
-	fmt.Println(r1.Intersect(r2))
-
 	var event sdl.Event
 	running := true
 	for running {
@@ -196,6 +223,7 @@ func main() {
 					if t.Type == 1025 {
 						log.Println("MOUSE DOWN. Grab something.")
 						if what != nil {
+							what.Trigger(EVENT_GRAB)
 							log.Println("GRABBING", what)
 							interactionState = INTERACTION_STATE_DRAGGING
 							draggingWhat = what
@@ -203,6 +231,9 @@ func main() {
 					} else if t.Type == 1026 {
 						log.Println("MOUSE UP. Drop it.")
 						if draggingWhat != nil {
+							if what != nil {
+								what.Trigger(EVENT_DROP)
+							}
 							log.Println("DROPPING", draggingWhat, "ON", what)
 							interactionState = INTERACTION_STATE_DEFAULT
 							draggingWhat = nil
