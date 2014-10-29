@@ -148,6 +148,19 @@ Planned event region list structure:
 */
 func main() {
 	runtime.GOMAXPROCS(2)
+
+	card0 := game.NewCard(0)
+	card1 := game.NewCard(0)
+	card2 := game.NewCard(1)
+	card3 := game.NewCard(8)
+	card4 := game.NewCard(9)
+
+	fmt.Println(card0.NextTo(card0))
+	fmt.Println(card0.NextTo(card1))
+	fmt.Println(card0.NextTo(card2))
+	fmt.Println(card0.NextTo(card3))
+	fmt.Println(card0.NextTo(card4))
+
 	TheGame := game.New()
 	fmt.Println(TheGame)
 	fmt.Println("P1:", TheGame.P1.Name())
