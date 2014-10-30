@@ -2,12 +2,15 @@ package game
 
 import (
 	"errors"
+	"fmt"
 )
 
 var ErrNoMoreCards = errors.New("No cards left on stack")
 var ErrTooManyCards = errors.New("Too many cards on stack")
 
 type cardrank uint8
+
+var WILDCARD = cardrank(77)
 
 func (cr cardrank) Next() cardrank {
 	if uint8(cr) < 9 {
@@ -37,7 +40,7 @@ func (c *card) String() string {
 	if c == nil {
 		return "I appear to be a <nil> '*card'"
 	}
-	return "Hello, I am a Card."
+	return fmt.Sprintf("Card(%d)", c.rank)
 }
 
 func (c *card) NextTo(targetCard *card) bool {
@@ -77,4 +80,47 @@ func (cs *cardstack) Pop() (*card, error) {
 		return cs.stack[len(cs.stack)-1], nil
 	}
 	return nil, ErrTooManyCards
+}
+
+func (cs *cardstack) Top() (*card, error) {
+	if len(cs.stack) > 0 {
+		return cs.stack[len(cs.stack)-1], nil
+	}
+	return nil, ErrNoMoreCards
+}
+
+type deck struct {
+	cards []*card
+	idx   int
+}
+
+func NewDeck() *deck {
+	d := deck{}
+	d.idx = 0
+	d.cards = make([]*card, 0, 52)
+	var i uint8
+	for i = 0; i < 10; i++ {
+		for j := 0; j < 5; j++ {
+			d.cards = append(d.cards, NewCard(i))
+		}
+	}
+	d.cards = append(d.cards, NewCard(uint8(WILDCARD)))
+	d.cards = append(d.cards, NewCard(uint8(WILDCARD)))
+	return &d
+}
+
+func (d *deck) GetCards() []*card {
+	return d.cards
+}
+
+func (d *deck) incidx() {
+	d.idx++
+}
+
+func (d *deck) GetNextCard() *card {
+	if d.idx < len(d.cards) {
+		defer d.incidx()
+		return d.cards[d.idx]
+	}
+	return nil
 }

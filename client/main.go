@@ -179,7 +179,8 @@ func main() {
 	fmt.Println(card0.NextTo(card3))
 	fmt.Println(card0.NextTo(card4))
 
-	TheGame := game.New()
+	TheDeck := game.NewDeck()
+	TheGame := game.New(TheDeck)
 	fmt.Println(TheGame)
 	fmt.Println("P1:", TheGame.P1.Name())
 	fmt.Println("P2:", TheGame.P2.Name())
