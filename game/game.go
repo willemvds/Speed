@@ -15,7 +15,8 @@ const (
 )
 
 type player struct {
-	name string
+	name    string
+	holding *card
 }
 
 func (p player) Name() string {
@@ -34,8 +35,8 @@ type Game struct {
 
 func New(d *deck) Game {
 	g := Game{}
-	g.P1 = &player{"Nobody"}
-	g.P2 = &player{"Somebody"}
+	g.P1 = &player{name: "Nobody"}
+	g.P2 = &player{name: "Somebody"}
 
 	for _, card := range d.GetCards() {
 		fmt.Printf("%s, ", card)
@@ -82,8 +83,50 @@ func (g *Game) Duration() time.Duration {
 
 func (g *Game) Grab(p *player, typ uint8, idx int) {
 	log.Printf("[game] Got GRAB from %s, type=%d, index=%d\n", p, typ, idx)
+	if p.holding != nil {
+		log.Println("[game] Player is already holding something, try again? (N/n)")
+		return
+	}
+	if typ == STACK_TYPE_SELF {
+		card, err := g.p1Stacks[idx].Pop()
+		if err != nil {
+			log.Println("[game] No more cards on that stack, peace")
+			return
+		}
+		log.Println("[game] Player is now holding", card)
+		p.holding = card
+	}
 }
 
 func (g *Game) Drop(p *player, typ uint8, idx int) {
 	log.Printf("[game] Got DROP from %s, type=%d, index=%d\n", p, typ, idx)
+	defer func() { p.holding = nil }()
+	if typ == STACK_TYPE_CENTER {
+		if p.holding == nil {
+			log.Println("[game] Player not holding anything, pointless!")
+			return
+		}
+		top, _ := g.centerStacks[idx].Top()
+		log.Printf("[game] top=%s, holding=%s, nextto=%b\n", top, p.holding, p.holding.NextTo(top))
+		if p.holding.NextTo(top) {
+			g.centerStacks[idx].Push(p.holding)
+			log.Println("Someone actually made a legit move")
+		}
+	}
+	g.CheckWinConditions()
+}
+
+func (g *Game) Discard(p *player) {
+	p.holding = nil
+}
+
+func (g *Game) CheckWinConditions() {
+	p1CardsLeft := 0
+	for _, stack := range g.p1Stacks {
+		p1CardsLeft += stack.Len()
+	}
+	log.Println("Player 1 cards left:", p1CardsLeft)
+	if p1CardsLeft == 0 {
+		log.Println("Player 1 won somehow...")
+	}
 }

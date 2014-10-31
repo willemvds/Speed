@@ -89,6 +89,10 @@ func (cs *cardstack) Top() (*card, error) {
 	return nil, ErrNoMoreCards
 }
 
+func (cs *cardstack) Len() int {
+	return len(cs.stack)
+}
+
 type deck struct {
 	cards []*card
 	idx   int

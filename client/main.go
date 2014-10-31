@@ -210,7 +210,7 @@ func main() {
 	log.Println("[client] P2:", TheGame.P2.Name())
 	log.Println("[client]", TheGame.Start())
 	log.Println("[client]", TheGame.Start())
-	ticker := time.NewTicker(1 * time.Second)
+	ticker := time.NewTicker(10 * time.Second)
 	go func() {
 		for {
 			<-ticker.C
@@ -269,26 +269,28 @@ func main() {
 				fmt.Printf("[%d ms] MouseMotion\ttype:%d\tid:%d\tx:%d\ty:%d\txrel:%d\tyrel:%d\n", t.Timestamp, t.Type, t.Which, t.X, t.Y, t.XRel, t.YRel)
 			*/
 			case *sdl.MouseButtonEvent:
-				log.Printf("[client] [%d ms] MouseButton\ttype:%d\tid:%d\tx:%d\ty:%d\tbutton:%d\tstate:%d\n",
-					t.Timestamp, t.Type, t.Which, t.X, t.Y, t.Button, t.State)
+				//log.Printf("[client] [%d ms] MouseButton\ttype:%d\tid:%d\tx:%d\ty:%d\tbutton:%d\tstate:%d\n",
+				//	t.Timestamp, t.Type, t.Which, t.X, t.Y, t.Button, t.State)
 				if t.Button == 1 {
 					point := &Point{t.X, t.Y}
 					what := eventRegions.HitWhat(point)
 					if t.Type == 1025 {
-						log.Println("[client] MOUSE DOWN. Grab something.")
+						//log.Println("[client] MOUSE DOWN. Grab something.")
 						if what != nil {
 							what.Trigger(EVENT_GRAB)
-							log.Println("[client] GRABBING", what)
+							//log.Println("[client] GRABBING", what)
 							interactionState = INTERACTION_STATE_DRAGGING
 							draggingWhat = what
 						}
 					} else if t.Type == 1026 {
-						log.Println("[client] MOUSE UP. Drop it.")
+						//log.Println("[client] MOUSE UP. Drop it.")
 						if draggingWhat != nil {
 							if what != nil {
 								what.Trigger(EVENT_DROP)
+							} else {
+								TheGame.Discard(TheGame.P1)
 							}
-							log.Println("[client] DROPPING", draggingWhat, "ON", what)
+							//log.Println("[client] DROPPING", draggingWhat, "ON", what)
 							interactionState = INTERACTION_STATE_DEFAULT
 							draggingWhat = nil
 						}
