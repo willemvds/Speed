@@ -6,6 +6,13 @@ import (
 	"time"
 )
 
+const (
+	STACK_TYPE_CENTER uint8 = iota
+	STACK_TYPE_SIDE
+	STACK_TYPE_SELF
+	STACK_TYPE_OPPONENT
+)
+
 type player struct {
 	name string
 }
@@ -14,7 +21,7 @@ func (p player) Name() string {
 	return p.name
 }
 
-type game struct {
+type Game struct {
 	P1           *player
 	P2           *player
 	timeStarted  time.Time
@@ -24,8 +31,8 @@ type game struct {
 	p2Stacks     []*cardstack
 }
 
-func New(d *deck) game {
-	g := game{}
+func New(d *deck) Game {
+	g := Game{}
 	g.P1 = &player{"Nobody"}
 	g.P2 = &player{"Somebody"}
 
@@ -60,7 +67,7 @@ func New(d *deck) game {
 	return g
 }
 
-func (g *game) Start() error {
+func (g *Game) Start() error {
 	if g.timeStarted.IsZero() {
 		g.timeStarted = time.Now()
 		return nil
@@ -68,6 +75,10 @@ func (g *game) Start() error {
 	return errors.New("Game already started")
 }
 
-func (g *game) Duration() time.Duration {
+func (g *Game) Duration() time.Duration {
 	return time.Since(g.timeStarted)
+}
+
+func (g *Game) Click(p *player, typ uint8, idx int) {
+	fmt.Println("Got click", p, typ, idx)
 }

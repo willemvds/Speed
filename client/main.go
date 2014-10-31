@@ -129,55 +129,77 @@ const (
 	INTERACTION_STATE_DRAGGING = 1
 )
 
-func POINTLESS_EVENT_HANDLER(ev Event) {
-	fmt.Println("Apparently this event occured:", ev)
+/*
+Event region list structure:
+0..1: Center
+2..3: Sides
+4..9: Self
+10..15: Opponent
+*/
+func setupEventRegions() *RegionList {
+	var idx int = 0
+	var x int32
+	var y int32 = 280
+	eventRegions := make(RegionList, 16)
+	// Center stacks
+	eventRegions[idx] = NewEventRegion(312, y, CARD_WIDTH, CARD_HEIGHT)
+	idx++
+	eventRegions[idx] = NewEventRegion(612, y, CARD_WIDTH, CARD_HEIGHT)
+	idx++
+	// Side stacks
+	eventRegions[idx] = NewEventRegion(30, y, CARD_WIDTH, CARD_HEIGHT)
+	idx++
+	eventRegions[idx] = NewEventRegion(894, y, CARD_WIDTH, CARD_HEIGHT)
+	idx++
+	// Self stacks
+	y = 520
+	for i := 0; i < 6; i++ {
+		x = int32(80 + (i*CARD_WIDTH + i*50))
+		eventRegions[idx] = NewEventRegion(x, y, CARD_WIDTH, CARD_HEIGHT)
+		idx++
+	}
+	// Opponent stacks
+	y = 20
+	for i := 0; i < 6; i++ {
+		x = int32(80 + (i*CARD_WIDTH + i*50))
+		eventRegions[idx] = NewEventRegion(x, y, CARD_WIDTH, CARD_HEIGHT)
+		idx++
+	}
+	return &eventRegions
 }
 
-func GetEventCallback(id int) EventCallback {
-	return func(ev Event) {
-		fmt.Printf("[%d] Apparently this event occured: %d\n", id, ev)
+func setupEventHandlers(g *game.Game, rl *RegionList) {
+	for i := range *rl {
+		idx := i
+		switch {
+		// Center stacks
+		case i < 2:
+			(*rl)[i].SetEventCallback(func(ev Event) {
+				g.Click(g.P1, game.STACK_TYPE_CENTER, idx)
+			})
+		// Side stacks
+		case i < 4:
+			(*rl)[i].SetEventCallback(func(ev Event) {
+				g.Click(g.P1, game.STACK_TYPE_SIDE, idx-2)
+			})
+		// Self stacks
+		case i < 10:
+			(*rl)[i].SetEventCallback(func(ev Event) {
+				g.Click(g.P1, game.STACK_TYPE_SELF, idx-4)
+			})
+		// Opponent stacks
+		case i < 16:
+			(*rl)[i].SetEventCallback(func(ev Event) {
+				g.Click(g.P1, game.STACK_TYPE_OPPONENT, idx-10)
+			})
+		default:
+			panic("I feel like the region list is not tip top")
+		}
 	}
 }
 
-/*
-Planned event region list structure:
-0..1: Center
-2..3: Sides
-4..9: Player 1
-10..15: Player 2
-*/
 func main() {
 	runtime.GOMAXPROCS(2)
-
-	card0 := game.NewCard(0)
-	card1 := game.NewCard(0)
-	card2 := game.NewCard(1)
-	card3 := game.NewCard(8)
-	card4 := game.NewCard(9)
-
-	cardstack := game.NewCardStack(3)
-	fmt.Println(cardstack.Push(card0))
-	fmt.Println(cardstack.Push(card1))
-	fmt.Println(cardstack.Push(card2))
-	fmt.Println(cardstack.Push(card3))
-	fmt.Println(cardstack.Push(card4))
-
-	err, card := cardstack.Pop()
-	fmt.Println("cardstack pop.", err, card)
-	err, card = cardstack.Pop()
-	fmt.Println("cardstack pop.", err, card)
-	err, card = cardstack.Pop()
-	fmt.Println("cardstack pop.", err, card)
-	err, card = cardstack.Pop()
-	fmt.Println("cardstack pop.", err, card)
-	err, card = cardstack.Pop()
-	fmt.Println("cardstack pop.", err, card)
-
-	fmt.Println(card0.NextTo(card0))
-	fmt.Println(card0.NextTo(card1))
-	fmt.Println(card0.NextTo(card2))
-	fmt.Println(card0.NextTo(card3))
-	fmt.Println(card0.NextTo(card4))
 
 	TheDeck := game.NewDeck()
 	TheGame := game.New(TheDeck)
@@ -199,29 +221,8 @@ func main() {
 	res := sdl.Init(sdl.INIT_VIDEO)
 	log.Println(res)
 
-	eventRegions := make(RegionList, 0)
-	var x int32
-	var y int32 = 20
-	for i := 0; i < 8; i++ {
-		x = int32(80 + (i*CARD_WIDTH + i*10))
-		er := NewEventRegion(x, y, CARD_WIDTH, CARD_HEIGHT)
-		er.SetEventCallback(POINTLESS_EVENT_HANDLER)
-		eventRegions = append(eventRegions, er)
-	}
-
-	y = 520
-	for i := 0; i < 8; i++ {
-		x = int32(80 + (i*CARD_WIDTH + i*10))
-		er := NewEventRegion(x, y, CARD_WIDTH, CARD_HEIGHT)
-		er.SetEventCallback(GetEventCallback(i))
-		eventRegions = append(eventRegions, er)
-	}
-
-	y = 280
-	eventRegions = append(eventRegions, NewEventRegion(30, y, CARD_WIDTH, CARD_HEIGHT))
-	eventRegions = append(eventRegions, NewEventRegion(312, y, CARD_WIDTH, CARD_HEIGHT))
-	eventRegions = append(eventRegions, NewEventRegion(612, y, CARD_WIDTH, CARD_HEIGHT))
-	eventRegions = append(eventRegions, NewEventRegion(894, y, CARD_WIDTH, CARD_HEIGHT))
+	eventRegions := setupEventRegions()
+	setupEventHandlers(&TheGame, eventRegions)
 
 	window := sdl.CreateWindow("Speed", sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED, 1024, 768, sdl.WINDOW_SHOWN)
 
@@ -230,23 +231,21 @@ func main() {
 		log.Println("Failed to create renderer:", sdl.GetError())
 		os.Exit(1)
 	}
+	renderer.Clear()
 
+	// Draw an image of a card
 	imgCard42 := sdl.LoadBMP("42.bmp")
-	log.Println(imgCard42)
-
 	texture := renderer.CreateTextureFromSurface(imgCard42)
 	if texture == nil {
 		log.Println("Failed to create texture (42):", sdl.GetError())
 	}
-
 	src := sdl.Rect{0, 0, 100, 180}
 	dst := sdl.Rect{100, 50, 100, 180}
-
-	renderer.Clear()
 	renderer.Copy(texture, &src, &dst)
 
+	// Draw our event regions (for now)
 	renderer.SetDrawColor(255, 255, 255, 255)
-	for _, region := range eventRegions {
+	for _, region := range *eventRegions {
 		renderer.DrawRect(region.SDLRect())
 	}
 	renderer.SetDrawColor(0, 0, 0, 255)
