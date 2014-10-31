@@ -3,6 +3,7 @@ package game
 import (
 	"errors"
 	"fmt"
+	"log"
 	"time"
 )
 
@@ -79,6 +80,10 @@ func (g *Game) Duration() time.Duration {
 	return time.Since(g.timeStarted)
 }
 
-func (g *Game) Click(p *player, typ uint8, idx int) {
-	fmt.Println("Got click", p, typ, idx)
+func (g *Game) Grab(p *player, typ uint8, idx int) {
+	log.Printf("[game] Got GRAB from %s, type=%d, index=%d\n", p, typ, idx)
+}
+
+func (g *Game) Drop(p *player, typ uint8, idx int) {
+	log.Printf("[game] Got DROP from %s, type=%d, index=%d\n", p, typ, idx)
 }

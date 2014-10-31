@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"os"
 	"runtime"
@@ -168,30 +167,33 @@ func setupEventRegions() *RegionList {
 	return &eventRegions
 }
 
+func setupEventRegionHandler(g *game.Game, er *EventRegion, typ uint8, idx int) {
+	er.SetEventCallback(func(ev Event) {
+		switch {
+		case ev == EVENT_GRAB:
+			g.Grab(g.P1, typ, idx)
+		case ev == EVENT_DROP:
+			g.Drop(g.P1, typ, idx)
+		}
+	})
+}
+
 func setupEventHandlers(g *game.Game, rl *RegionList) {
 	for i := range *rl {
 		idx := i
 		switch {
 		// Center stacks
 		case i < 2:
-			(*rl)[i].SetEventCallback(func(ev Event) {
-				g.Click(g.P1, game.STACK_TYPE_CENTER, idx)
-			})
+			setupEventRegionHandler(g, (*rl)[i], game.STACK_TYPE_CENTER, idx)
 		// Side stacks
 		case i < 4:
-			(*rl)[i].SetEventCallback(func(ev Event) {
-				g.Click(g.P1, game.STACK_TYPE_SIDE, idx-2)
-			})
+			setupEventRegionHandler(g, (*rl)[i], game.STACK_TYPE_SIDE, idx-2)
 		// Self stacks
 		case i < 10:
-			(*rl)[i].SetEventCallback(func(ev Event) {
-				g.Click(g.P1, game.STACK_TYPE_SELF, idx-4)
-			})
+			setupEventRegionHandler(g, (*rl)[i], game.STACK_TYPE_SELF, idx-4)
 		// Opponent stacks
 		case i < 16:
-			(*rl)[i].SetEventCallback(func(ev Event) {
-				g.Click(g.P1, game.STACK_TYPE_OPPONENT, idx-10)
-			})
+			setupEventRegionHandler(g, (*rl)[i], game.STACK_TYPE_OPPONENT, idx-10)
 		default:
 			panic("I feel like the region list is not tip top")
 		}
@@ -203,23 +205,26 @@ func main() {
 
 	TheDeck := game.NewDeck()
 	TheGame := game.New(TheDeck)
-	fmt.Println(TheGame)
-	fmt.Println("P1:", TheGame.P1.Name())
-	fmt.Println("P2:", TheGame.P2.Name())
-	fmt.Println(TheGame.Start())
-	fmt.Println(TheGame.Start())
+	log.Println(TheGame)
+	log.Println("[client] P1:", TheGame.P1.Name())
+	log.Println("[client] P2:", TheGame.P2.Name())
+	log.Println("[client]", TheGame.Start())
+	log.Println("[client]", TheGame.Start())
 	ticker := time.NewTicker(1 * time.Second)
 	go func() {
 		for {
 			<-ticker.C
-			fmt.Println("Game Duration: ", TheGame.Duration())
+			log.Println("[client] Game Duration: ", TheGame.Duration())
 		}
 	}()
+
 	interactionState := INTERACTION_STATE_DEFAULT
-	fmt.Println(interactionState)
+	// not used? wha?
+	log.Println(interactionState)
+
 	var draggingWhat Region
 	res := sdl.Init(sdl.INIT_VIDEO)
-	log.Println(res)
+	log.Println("[client]", res)
 
 	eventRegions := setupEventRegions()
 	setupEventHandlers(&TheGame, eventRegions)
@@ -228,7 +233,7 @@ func main() {
 
 	renderer := sdl.CreateRenderer(window, -1, sdl.RENDERER_ACCELERATED)
 	if renderer == nil {
-		log.Println("Failed to create renderer:", sdl.GetError())
+		log.Println("[client] Failed to create renderer:", sdl.GetError())
 		os.Exit(1)
 	}
 	renderer.Clear()
@@ -237,7 +242,7 @@ func main() {
 	imgCard42 := sdl.LoadBMP("42.bmp")
 	texture := renderer.CreateTextureFromSurface(imgCard42)
 	if texture == nil {
-		log.Println("Failed to create texture (42):", sdl.GetError())
+		log.Println("[client] Failed to create texture (42):", sdl.GetError())
 	}
 	src := sdl.Rect{0, 0, 100, 180}
 	dst := sdl.Rect{100, 50, 100, 180}
@@ -259,41 +264,42 @@ func main() {
 			switch t := event.(type) {
 			case *sdl.QuitEvent:
 				running = false
-			/*case *sdl.MouseMotionEvent:
-			fmt.Printf("[%d ms] MouseMotion\ttype:%d\tid:%d\tx:%d\ty:%d\txrel:%d\tyrel:%d\n",
-				t.Timestamp, t.Type, t.Which, t.X, t.Y, t.XRel, t.YRel)*/
+			/*
+				case *sdl.MouseMotionEvent:
+				fmt.Printf("[%d ms] MouseMotion\ttype:%d\tid:%d\tx:%d\ty:%d\txrel:%d\tyrel:%d\n", t.Timestamp, t.Type, t.Which, t.X, t.Y, t.XRel, t.YRel)
+			*/
 			case *sdl.MouseButtonEvent:
-				fmt.Printf("[%d ms] MouseButton\ttype:%d\tid:%d\tx:%d\ty:%d\tbutton:%d\tstate:%d\n",
+				log.Printf("[client] [%d ms] MouseButton\ttype:%d\tid:%d\tx:%d\ty:%d\tbutton:%d\tstate:%d\n",
 					t.Timestamp, t.Type, t.Which, t.X, t.Y, t.Button, t.State)
 				if t.Button == 1 {
 					point := &Point{t.X, t.Y}
 					what := eventRegions.HitWhat(point)
 					if t.Type == 1025 {
-						log.Println("MOUSE DOWN. Grab something.")
+						log.Println("[client] MOUSE DOWN. Grab something.")
 						if what != nil {
 							what.Trigger(EVENT_GRAB)
-							log.Println("GRABBING", what)
+							log.Println("[client] GRABBING", what)
 							interactionState = INTERACTION_STATE_DRAGGING
 							draggingWhat = what
 						}
 					} else if t.Type == 1026 {
-						log.Println("MOUSE UP. Drop it.")
+						log.Println("[client] MOUSE UP. Drop it.")
 						if draggingWhat != nil {
 							if what != nil {
 								what.Trigger(EVENT_DROP)
 							}
-							log.Println("DROPPING", draggingWhat, "ON", what)
+							log.Println("[client] DROPPING", draggingWhat, "ON", what)
 							interactionState = INTERACTION_STATE_DEFAULT
 							draggingWhat = nil
 						}
-
 					}
 				}
-			case *sdl.MouseWheelEvent:
-				fmt.Printf("[%d ms] MouseWheel\ttype:%d\tid:%d\tx:%d\ty:%d\n",
-					t.Timestamp, t.Type, t.Which, t.X, t.Y)
+			/*
+				case *sdl.MouseWheelEvent:
+					fmt.Printf("[%d ms] MouseWheel\ttype:%d\tid:%d\tx:%d\ty:%d\n", t.Timestamp, t.Type, t.Which, t.X, t.Y)
+			*/
 			case *sdl.KeyUpEvent:
-				fmt.Printf("[%d ms] Keyboard\ttype:%d\tsym:%c\tmodifiers:%d\tstate:%d\trepeat:%d\n",
+				log.Printf("[%d ms] Keyboard\ttype:%d\tsym:%c\tmodifiers:%d\tstate:%d\trepeat:%d\n",
 					t.Timestamp, t.Type, t.Keysym.Sym, t.Keysym.Mod, t.State, t.Repeat)
 			}
 		}
