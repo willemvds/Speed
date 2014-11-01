@@ -14,29 +14,52 @@ const (
 	STACK_TYPE_OPPONENT
 )
 
+var ErrPlayersNotReady = errors.New("Not all players are ready")
+var ErrGameAlreadyStarted = errors.New("Game already started")
+var ErrNoPlayerSlotsAvailable = errors.New("No more player slots available")
+var ErrPlayerNotPresent = errors.New("That player is not present in the game")
+
 type player struct {
 	name    string
 	holding *card
+}
+
+func NewPlayer(name string) *player {
+	p := player{}
+	p.name = name
+	return &p
 }
 
 func (p player) Name() string {
 	return p.name
 }
 
+type gameState uint8
+
+const (
+	STATE_PRE_GAME gameState = iota
+	STATE_PLAY
+	STATE_POST_GAME
+)
+
 type Game struct {
 	P1           *player
+	p1Ready      bool
 	P2           *player
+	p2Ready      bool
 	timeStarted  time.Time
 	centerStacks []*cardstack
 	sideStacks   []*cardstack
 	p1Stacks     []*cardstack
 	p2Stacks     []*cardstack
+	state        gameState
 }
 
 func New(d *deck) Game {
 	g := Game{}
-	g.P1 = &player{name: "Nobody"}
-	g.P2 = &player{name: "Somebody"}
+	g.state = STATE_PRE_GAME
+	//g.P1 = &player{name: "Nobody"}
+	//g.P2 = &player{name: "Somebody"}
 
 	for _, card := range d.GetCards() {
 		fmt.Printf("%s, ", card)
@@ -69,12 +92,56 @@ func New(d *deck) Game {
 	return g
 }
 
-func (g *Game) Start() error {
-	if g.timeStarted.IsZero() {
-		g.timeStarted = time.Now()
+func (g *Game) Join(p player) error {
+	if g.P1 == nil {
+		g.P1 = &p
+		return nil
+	} else if g.P2 == nil {
+		g.P2 = &p
+		return nil
+	} else {
+		return ErrNoPlayerSlotsAvailable
+	}
+}
+
+func (g *Game) Ready(p *player) error {
+	if g.P1 == p {
+		if g.P1 == nil {
+			return ErrPlayerNotPresent
+		}
+		g.p1Ready = true
 		return nil
 	}
-	return errors.New("Game already started")
+	if g.P2 == p {
+		if g.P2 == nil {
+			return ErrPlayerNotPresent
+		}
+		g.p2Ready = true
+		return nil
+	}
+	return ErrPlayerNotPresent
+}
+
+func (g *Game) P1Ready(p *player) error {
+	g.p1Ready = true
+	return nil
+}
+
+func (g *Game) P2Ready(p *player) error {
+	g.p2Ready = true
+	return nil
+}
+
+func (g *Game) Start() error {
+	if !g.p1Ready || !g.p2Ready {
+		return ErrPlayersNotReady
+	}
+	if g.timeStarted.IsZero() {
+		g.timeStarted = time.Now()
+		g.state = STATE_PLAY
+		return nil
+	}
+	return ErrGameAlreadyStarted
 }
 
 func (g *Game) Duration() time.Duration {
@@ -82,6 +149,9 @@ func (g *Game) Duration() time.Duration {
 }
 
 func (g *Game) Grab(p *player, typ uint8, idx int) {
+	if g.state != STATE_PLAY {
+		return
+	}
 	log.Printf("[game] Got GRAB from %s, type=%d, index=%d\n", p, typ, idx)
 	if p.holding != nil {
 		log.Println("[game] Player is already holding something, try again? (N/n)")
@@ -99,6 +169,9 @@ func (g *Game) Grab(p *player, typ uint8, idx int) {
 }
 
 func (g *Game) Drop(p *player, typ uint8, idx int) {
+	if g.state != STATE_PLAY {
+		return
+	}
 	log.Printf("[game] Got DROP from %s, type=%d, index=%d\n", p, typ, idx)
 	defer func() { p.holding = nil }()
 	if typ == STACK_TYPE_CENTER {
@@ -117,16 +190,30 @@ func (g *Game) Drop(p *player, typ uint8, idx int) {
 }
 
 func (g *Game) Discard(p *player) {
+	if g.state != STATE_PLAY {
+		return
+	}
 	p.holding = nil
 }
 
 func (g *Game) CheckWinConditions() {
-	p1CardsLeft := 0
+	cardsLeft := 0
 	for _, stack := range g.p1Stacks {
-		p1CardsLeft += stack.Len()
+		cardsLeft += stack.Len()
 	}
-	log.Println("Player 1 cards left:", p1CardsLeft)
-	if p1CardsLeft == 0 {
+	log.Println("Player 1 cards left:", cardsLeft)
+	if cardsLeft == 0 {
 		log.Println("Player 1 won somehow...")
+		g.state = STATE_POST_GAME
+		return
+	}
+	for _, stack := range g.p2Stacks {
+		cardsLeft += stack.Len()
+	}
+	log.Println("Player 2 cards left:", cardsLeft)
+	if cardsLeft == 0 {
+		log.Println("Player 2 won somehow...")
+		g.state = STATE_POST_GAME
+		return
 	}
 }

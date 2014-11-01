@@ -117,13 +117,9 @@ func (d *deck) GetCards() []*card {
 	return d.cards
 }
 
-func (d *deck) incidx() {
-	d.idx++
-}
-
 func (d *deck) GetNextCard() *card {
 	if d.idx < len(d.cards) {
-		defer d.incidx()
+		defer func() { d.idx++ }()
 		return d.cards[d.idx]
 	}
 	return nil

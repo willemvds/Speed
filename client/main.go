@@ -206,10 +206,19 @@ func main() {
 	TheDeck := game.NewDeck()
 	TheGame := game.New(TheDeck)
 	log.Println(TheGame)
-	log.Println("[client] P1:", TheGame.P1.Name())
-	log.Println("[client] P2:", TheGame.P2.Name())
 	log.Println("[client]", TheGame.Start())
+
+	P1 := game.NewPlayer("Nobody")
+	P2 := game.NewPlayer("Somebody")
+	err := TheGame.Join(*P1)
+	log.Println("[client]", err)
+	TheGame.Ready(TheGame.P1)
+	err = TheGame.Join(*P2)
+	log.Println("[client]", err)
+	TheGame.Ready(TheGame.P2)
+
 	log.Println("[client]", TheGame.Start())
+
 	ticker := time.NewTicker(10 * time.Second)
 	go func() {
 		for {
