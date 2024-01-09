@@ -1,0 +1,4 @@
+github.com/veandco/go-sdl2 v0.4.37 h1:Xwf/1olqE+Ii4a2Er7joy/ByrhNw4RfVfBpMOeZ+b40=
+github.com/veandco/go-sdl2 v0.4.37/go.mod h1:OROqMhHD43nT4/i9crJukyVecjPNYYuCofep6SNiAjY=
+github.com/willemvds/speed v0.0.0-20141101183820-5c381442e8bb h1:DK6mKcAfr58gxhyikN/KmZJcpJ/rQL8zheLb3xoWFdI=
+github.com/willemvds/speed v0.0.0-20141101183820-5c381442e8bb/go.mod h1:NYHDe1JL/0p1514C75uQ1Tz5MEGDOBJFGsAipPO00+g=
