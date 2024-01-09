@@ -8,7 +8,7 @@ import (
 
 	"github.com/veandco/go-sdl2/sdl"
 
-	"github.com/willemvds/speed/game"
+	"github.com/willemvds/Speed/game"
 )
 
 type Region interface {
@@ -238,20 +238,29 @@ func main() {
 	eventRegions := setupEventRegions()
 	setupEventHandlers(&TheGame, eventRegions)
 
-	window := sdl.CreateWindow("Speed", sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED, 1024, 768, sdl.WINDOW_SHOWN)
+	window, err := sdl.CreateWindow("Speed", sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED, 1024, 768, sdl.WINDOW_SHOWN)
+	if err != nil {
+		log.Println("[client] Failed to create window:", err)
+		os.Exit(1)
+	}
 
-	renderer := sdl.CreateRenderer(window, -1, sdl.RENDERER_ACCELERATED)
-	if renderer == nil {
-		log.Println("[client] Failed to create renderer:", sdl.GetError())
+	renderer, err := sdl.CreateRenderer(window, -1, sdl.RENDERER_ACCELERATED)
+	if err != nil {
+		log.Println("[client] Failed to create renderer:", err)
 		os.Exit(1)
 	}
 	renderer.Clear()
 
 	// Draw an image of a card
-	imgCard42 := sdl.LoadBMP("42.bmp")
-	texture := renderer.CreateTextureFromSurface(imgCard42)
-	if texture == nil {
-		log.Println("[client] Failed to create texture (42):", sdl.GetError())
+	imgCard42, err := sdl.LoadBMP("42.bmp")
+	if err != nil {
+		log.Println("[client] Failed to load bitmap (42):", err)
+		os.Exit(1)
+	}
+	texture, err := renderer.CreateTextureFromSurface(imgCard42)
+	if err != nil {
+		log.Println("[client] Failed to create texture (42):", err)
+		os.Exit(1)
 	}
 	src := sdl.Rect{0, 0, 100, 180}
 	dst := sdl.Rect{100, 50, 100, 180}
@@ -305,13 +314,13 @@ func main() {
 						}
 					}
 				}
-			/*
-				case *sdl.MouseWheelEvent:
-					fmt.Printf("[%d ms] MouseWheel\ttype:%d\tid:%d\tx:%d\ty:%d\n", t.Timestamp, t.Type, t.Which, t.X, t.Y)
-			*/
-			case *sdl.KeyUpEvent:
-				log.Printf("[%d ms] Keyboard\ttype:%d\tsym:%c\tmodifiers:%d\tstate:%d\trepeat:%d\n",
-					t.Timestamp, t.Type, t.Keysym.Sym, t.Keysym.Mod, t.State, t.Repeat)
+				/*
+					case *sdl.MouseWheelEvent:
+						fmt.Printf("[%d ms] MouseWheel\ttype:%d\tid:%d\tx:%d\ty:%d\n", t.Timestamp, t.Type, t.Which, t.X, t.Y)
+				*/
+				//			case *sdl.KeyUpEvent:
+				//				log.Printf("[%d ms] Keyboard\ttype:%d\tsym:%c\tmodifiers:%d\tstate:%d\trepeat:%d\n",
+				//					t.Timestamp, t.Type, t.Keysym.Sym, t.Keysym.Mod, t.State, t.Repeat)
 			}
 		}
 	}
