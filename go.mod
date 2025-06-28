@@ -1,6 +1,6 @@
 module github.com/willemvds/Speed
 
-go 1.21.5
+go 1.24.4
 
 require github.com/jupiterrider/purego-sdl3 v0.0.0-20250626185803-e8a8e1c0d4b5
 

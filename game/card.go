@@ -10,20 +10,23 @@ var ErrTooManyCards = errors.New("Too many cards on stack")
 
 type cardrank uint8
 
+const MinRank = 1
+const MaxRank = 13
+
 var WILDCARD = cardrank(77)
 
 func (cr cardrank) Next() cardrank {
-	if uint8(cr) < 9 {
+	if uint8(cr) < MaxRank {
 		return cr + 1
 	}
-	return cardrank(0)
+	return cardrank(MinRank)
 }
 
 func (cr cardrank) Prev() cardrank {
-	if uint8(cr) > 0 {
+	if uint8(cr) > MinRank {
 		return cr - 1
 	}
-	return cardrank(9)
+	return cardrank(MaxRank)
 }
 
 type card struct {
@@ -103,13 +106,14 @@ func NewDeck() *deck {
 	d.idx = 0
 	d.cards = make([]*card, 0, 52)
 	var i uint8
-	for i = 0; i < 10; i++ {
-		for j := 0; j < 5; j++ {
+	for i = MinRank; i <= MaxRank; i++ {
+		for range 4 {
 			d.cards = append(d.cards, NewCard(i))
 		}
 	}
 	d.cards = append(d.cards, NewCard(uint8(WILDCARD)))
 	d.cards = append(d.cards, NewCard(uint8(WILDCARD)))
+	fmt.Println("Got ", len(d.cards), "cards")
 	return &d
 }
 
