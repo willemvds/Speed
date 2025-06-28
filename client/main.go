@@ -6,7 +6,7 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/veandco/go-sdl2/sdl"
+	"github.com/jupiterrider/purego-sdl3/sdl"
 
 	"github.com/willemvds/Speed/game"
 )
@@ -85,8 +85,13 @@ func (er *EventRegion) Height() int32 {
 	return er.Rect.H
 }
 
-func (er *EventRegion) SDLRect() *sdl.Rect {
-	return er.Rect
+func (er *EventRegion) SDLRect() *sdl.FRect {
+	return &sdl.FRect{
+		X: float32(er.Rect.X),
+		Y: float32(er.Rect.Y),
+		W: float32(er.Rect.W),
+		H: float32(er.Rect.H),
+	}
 }
 
 func (er *EventRegion) SetEventCallback(cb EventCallback) {
@@ -232,67 +237,70 @@ func main() {
 	log.Println(interactionState)
 
 	var draggingWhat Region
-	res := sdl.Init(sdl.INIT_VIDEO)
+	res := sdl.Init(sdl.InitVideo)
 	log.Println("[client]", res)
 
 	eventRegions := setupEventRegions()
 	setupEventHandlers(&TheGame, eventRegions)
 
-	window, err := sdl.CreateWindow("Speed", sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED, 1024, 768, sdl.WINDOW_SHOWN)
-	if err != nil {
+	var window *sdl.Window
+	var renderer *sdl.Renderer
+	ok := sdl.CreateWindowAndRenderer("Speed", 1024, 768, sdl.WindowResizable, &window, &renderer)
+	if !ok {
+		err := sdl.GetError()
 		log.Println("[client] Failed to create window:", err)
 		os.Exit(1)
 	}
+	defer sdl.DestroyRenderer(renderer)
+	defer sdl.DestroyWindow(window)
 
-	renderer, err := sdl.CreateRenderer(window, -1, sdl.RENDERER_ACCELERATED)
-	if err != nil {
-		log.Println("[client] Failed to create renderer:", err)
-		os.Exit(1)
-	}
-	renderer.Clear()
+	sdl.RenderClear(renderer)
 
 	// Draw an image of a card
-	imgCard42, err := sdl.LoadBMP("42.bmp")
-	if err != nil {
-		log.Println("[client] Failed to load bitmap (42):", err)
+	imgCard42 := sdl.LoadBMP("card.bmp")
+	if imgCard42 == nil {
+		err := sdl.GetError()
+		log.Println("[client] Failed to load bitmap (card.bmp):", err)
 		os.Exit(1)
 	}
-	texture, err := renderer.CreateTextureFromSurface(imgCard42)
-	if err != nil {
+	texture := sdl.CreateTextureFromSurface(renderer, imgCard42)
+	if texture == nil {
+		err := sdl.GetError()
 		log.Println("[client] Failed to create texture (42):", err)
 		os.Exit(1)
 	}
-	src := sdl.Rect{0, 0, 100, 180}
-	dst := sdl.Rect{100, 50, 100, 180}
-	renderer.Copy(texture, &src, &dst)
+	defer sdl.DestroyTexture(texture)
+	dst := sdl.FRect{100, 50, 100, 180}
+	sdl.RenderTexture(renderer, texture, nil, &dst)
 
 	// Draw our event regions (for now)
-	renderer.SetDrawColor(255, 255, 255, 255)
+	sdl.SetRenderDrawColor(renderer, 255, 255, 255, 255)
 	for _, region := range *eventRegions {
-		renderer.DrawRect(region.SDLRect())
+		sdl.RenderRect(renderer, region.SDLRect())
 	}
-	renderer.SetDrawColor(0, 0, 0, 255)
+	sdl.SetRenderDrawColor(renderer, 0, 0, 0, 255)
 
-	renderer.Present()
+	sdl.RenderPresent(renderer)
 
 	var event sdl.Event
 	running := true
 	for running {
-		for event = sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
-			switch t := event.(type) {
-			case *sdl.QuitEvent:
+		for sdl.PollEvent(&event) {
+			switch event.Type() {
+			case sdl.EventQuit:
 				running = false
 			/*
 				case *sdl.MouseMotionEvent:
 				fmt.Printf("[%d ms] MouseMotion\ttype:%d\tid:%d\tx:%d\ty:%d\txrel:%d\tyrel:%d\n", t.Timestamp, t.Type, t.Which, t.X, t.Y, t.XRel, t.YRel)
 			*/
-			case *sdl.MouseButtonEvent:
+			case sdl.EventMouseButtonDown:
 				//log.Printf("[client] [%d ms] MouseButton\ttype:%d\tid:%d\tx:%d\ty:%d\tbutton:%d\tstate:%d\n",
 				//	t.Timestamp, t.Type, t.Which, t.X, t.Y, t.Button, t.State)
-				if t.Button == 1 {
-					point := &Point{t.X, t.Y}
+				ev := event.Button()
+				if ev.Button == 1 {
+					point := &Point{int32(ev.X), int32(ev.Y)}
 					what := eventRegions.HitWhat(point)
-					if t.Type == 1025 {
+					if ev.Down {
 						//log.Println("[client] MOUSE DOWN. Grab something.")
 						if what != nil {
 							what.Trigger(EVENT_GRAB)
@@ -300,7 +308,7 @@ func main() {
 							interactionState = INTERACTION_STATE_DRAGGING
 							draggingWhat = what
 						}
-					} else if t.Type == 1026 {
+					} else {
 						//log.Println("[client] MOUSE UP. Drop it.")
 						if draggingWhat != nil {
 							if what != nil {
@@ -324,6 +332,4 @@ func main() {
 			}
 		}
 	}
-
-	window.Destroy()
 }

@@ -1,4 +1,4 @@
-github.com/veandco/go-sdl2 v0.4.37 h1:Xwf/1olqE+Ii4a2Er7joy/ByrhNw4RfVfBpMOeZ+b40=
-github.com/veandco/go-sdl2 v0.4.37/go.mod h1:OROqMhHD43nT4/i9crJukyVecjPNYYuCofep6SNiAjY=
-github.com/willemvds/speed v0.0.0-20141101183820-5c381442e8bb h1:DK6mKcAfr58gxhyikN/KmZJcpJ/rQL8zheLb3xoWFdI=
-github.com/willemvds/speed v0.0.0-20141101183820-5c381442e8bb/go.mod h1:NYHDe1JL/0p1514C75uQ1Tz5MEGDOBJFGsAipPO00+g=
+github.com/ebitengine/purego v0.8.3 h1:K+0AjQp63JEZTEMZiwsI9g0+hAMNohwUOtY0RPGexmc=
+github.com/ebitengine/purego v0.8.3/go.mod h1:iIjxzd6CiRiOG0UyXP+V1+jWqUXVjPKLAI0mRfJZTmQ=
+github.com/jupiterrider/purego-sdl3 v0.0.0-20250626185803-e8a8e1c0d4b5 h1:6pqZkuZoCoRg6cqacJgvKNHzErgRtGWSwlOhovoDruw=
+github.com/jupiterrider/purego-sdl3 v0.0.0-20250626185803-e8a8e1c0d4b5/go.mod h1:pRSNvzaSfMxcVPHP5VKo5VF5SAFp78pPIGlBIoI8KBw=
