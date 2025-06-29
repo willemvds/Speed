@@ -255,8 +255,6 @@ func main() {
 	defer sdl.DestroyRenderer(renderer)
 	defer sdl.DestroyWindow(window)
 
-	sdl.RenderClear(renderer)
-
 	// Draw an image of a card
 	imgCard42 := sdl.LoadBMP("card.bmp")
 	if imgCard42 == nil {
@@ -271,32 +269,24 @@ func main() {
 		os.Exit(1)
 	}
 	defer sdl.DestroyTexture(texture)
-	dst := sdl.FRect{100, 50, 100, 180}
-	sdl.RenderTexture(renderer, texture, nil, &dst)
-
-	// Draw our event regions (for now)
-	sdl.SetRenderDrawColor(renderer, 255, 255, 255, 255)
-	for _, region := range *eventRegions {
-		sdl.RenderRect(renderer, region.SDLRect())
-	}
-	sdl.SetRenderDrawColor(renderer, 0, 0, 0, 255)
-
-	sdl.RenderPresent(renderer)
+	dst := sdl.FRect{X: 100, Y: 50, W: 100, H: 180}
 
 	var event sdl.Event
 	running := true
+
+	var highlight Region = nil
 	for running {
 		for sdl.PollEvent(&event) {
 			switch event.Type() {
 			case sdl.EventQuit:
 				running = false
-			/*
-				case *sdl.MouseMotionEvent:
-				fmt.Printf("[%d ms] MouseMotion\ttype:%d\tid:%d\tx:%d\ty:%d\txrel:%d\tyrel:%d\n", t.Timestamp, t.Type, t.Which, t.X, t.Y, t.XRel, t.YRel)
-			*/
+			case sdl.EventMouseMotion:
+				ev := event.Button()
+				point := &Point{int32(ev.X), int32(ev.Y)}
+
+				what := eventRegions.HitWhat(point)
+				highlight = what
 			case sdl.EventMouseButtonDown:
-				//log.Printf("[client] [%d ms] MouseButton\ttype:%d\tid:%d\tx:%d\ty:%d\tbutton:%d\tstate:%d\n",
-				//	t.Timestamp, t.Type, t.Which, t.X, t.Y, t.Button, t.State)
 				ev := event.Button()
 				if ev.Button == 1 {
 					point := &Point{int32(ev.X), int32(ev.Y)}
@@ -323,14 +313,24 @@ func main() {
 						}
 					}
 				}
-				/*
-					case *sdl.MouseWheelEvent:
-						fmt.Printf("[%d ms] MouseWheel\ttype:%d\tid:%d\tx:%d\ty:%d\n", t.Timestamp, t.Type, t.Which, t.X, t.Y)
-				*/
-				//			case *sdl.KeyUpEvent:
-				//				log.Printf("[%d ms] Keyboard\ttype:%d\tsym:%c\tmodifiers:%d\tstate:%d\trepeat:%d\n",
-				//					t.Timestamp, t.Type, t.Keysym.Sym, t.Keysym.Mod, t.State, t.Repeat)
 			}
 		}
+
+		sdl.RenderClear(renderer)
+		sdl.RenderTexture(renderer, texture, nil, &dst)
+
+		// Draw our event regions (for now)
+		for _, region := range *eventRegions {
+			if region == highlight {
+				sdl.SetRenderDrawColor(renderer, 255, 140, 80, 255)
+				sdl.RenderFillRect(renderer, region.SDLRect())
+			} else {
+				sdl.SetRenderDrawColor(renderer, 255, 255, 255, 255)
+				sdl.RenderRect(renderer, region.SDLRect())
+			}
+		}
+		sdl.SetRenderDrawColor(renderer, 0, 0, 0, 255)
+
+		sdl.RenderPresent(renderer)
 	}
 }
