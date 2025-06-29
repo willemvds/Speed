@@ -49,12 +49,12 @@ type Game struct {
 	p1Ready      bool
 	P2           *player
 	p2Ready      bool
-	timeStarted  time.Time
 	centerStacks []*cards.Stack
 	sideStacks   []*cards.Stack
 	p1Stacks     []*cards.Stack
 	p2Stacks     []*cards.Stack
 	state        gameState
+	startedAt    time.Time
 }
 
 func New(deck *cards.Stack) Game {
@@ -151,8 +151,8 @@ func (g *Game) Start() error {
 	if !g.p1Ready || !g.p2Ready {
 		return ErrPlayersNotReady
 	}
-	if g.timeStarted.IsZero() {
-		g.timeStarted = time.Now()
+	if g.startedAt.IsZero() {
+		g.startedAt = time.Now()
 		g.state = STATE_PLAY
 		return nil
 	}
@@ -160,7 +160,7 @@ func (g *Game) Start() error {
 }
 
 func (g *Game) Duration() time.Duration {
-	return time.Since(g.timeStarted)
+	return time.Since(g.startedAt)
 }
 
 func (g *Game) Grab(p *player, typ uint8, idx int) {
