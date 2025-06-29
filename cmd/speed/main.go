@@ -8,6 +8,7 @@ import (
 
 	"github.com/jupiterrider/purego-sdl3/sdl"
 
+	"github.com/willemvds/Speed/cards"
 	"github.com/willemvds/Speed/game"
 )
 
@@ -208,7 +209,7 @@ func setupEventHandlers(g *game.Game, rl *RegionList) {
 func main() {
 	runtime.GOMAXPROCS(2)
 
-	TheDeck := game.NewDeck()
+	TheDeck := cards.StandardDeck()
 	TheGame := game.New(TheDeck)
 	log.Println(TheGame)
 	log.Println("[client]", TheGame.Start())

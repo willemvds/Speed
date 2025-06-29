@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log"
 	"time"
+
+	"github.com/willemvds/Speed/cards"
 )
 
 const (
@@ -21,7 +23,7 @@ var ErrPlayerNotPresent = errors.New("That player is not present in the game")
 
 type player struct {
 	name    string
-	holding *card
+	holding cards.Card
 }
 
 func NewPlayer(name string) *player {
@@ -48,46 +50,59 @@ type Game struct {
 	P2           *player
 	p2Ready      bool
 	timeStarted  time.Time
-	centerStacks []*cardstack
-	sideStacks   []*cardstack
-	p1Stacks     []*cardstack
-	p2Stacks     []*cardstack
+	centerStacks []*cards.Stack
+	sideStacks   []*cards.Stack
+	p1Stacks     []*cards.Stack
+	p2Stacks     []*cards.Stack
 	state        gameState
 }
 
-func New(d *deck) Game {
+func New(deck *cards.Stack) Game {
 	g := Game{}
 	g.state = STATE_PRE_GAME
 	//g.P1 = &player{name: "Nobody"}
 	//g.P2 = &player{name: "Somebody"}
 
-	for _, card := range d.GetCards() {
-		fmt.Printf("%s, ", card)
-	}
+	//for _, card := range deck.GetCards() {
+	//	fmt.Printf("%s, ", card)
+	//}
 	fmt.Println(".")
 
-	g.p1Stacks = make([]*cardstack, 6, 6)
-	g.p2Stacks = make([]*cardstack, 6, 6)
-	for i := 0; i < 6; i++ {
-		g.p1Stacks[i] = NewCardStack(4)
-		g.p2Stacks[i] = NewCardStack(4)
-		for j := 0; j < 4; j++ {
-			g.p1Stacks[i].Push(d.GetNextCard())
-			g.p2Stacks[i].Push(d.GetNextCard())
+	g.p1Stacks = []*cards.Stack{
+		cards.NewStack(4),
+		cards.NewStack(4),
+		cards.NewStack(4),
+		cards.NewStack(4),
+		cards.NewStack(4),
+		cards.NewStack(4),
+	}
+	g.p2Stacks = []*cards.Stack{
+		cards.NewStack(4),
+		cards.NewStack(4),
+		cards.NewStack(4),
+		cards.NewStack(4),
+		cards.NewStack(4),
+		cards.NewStack(4),
+	}
+	for i := range 6 {
+		for range 4 {
+			cardForP1, _ := deck.Pop()
+			g.p1Stacks[i].Push(cardForP1)
+			cardForP2, _ := deck.Pop()
+			g.p2Stacks[i].Push(cardForP2)
 		}
 	}
-	g.centerStacks = make([]*cardstack, 2, 2)
-	g.centerStacks[0] = NewCardStack(51)
-	g.centerStacks[0].Push(d.GetNextCard())
-	g.centerStacks[1] = NewCardStack(51)
-	g.centerStacks[1].Push(d.GetNextCard())
-	g.sideStacks = make([]*cardstack, 2, 2)
-	g.sideStacks[0] = NewCardStack(1)
-	g.sideStacks[0].Push(d.GetNextCard())
-	g.sideStacks[1] = NewCardStack(1)
-	g.sideStacks[1].Push(d.GetNextCard())
+	g.centerStacks = []*cards.Stack{
+		cards.NewStack(1),
+		cards.NewStack(1),
+	}
+	g.sideStacks = []*cards.Stack{
+		cards.NewStack(1),
+		cards.NewStack(1),
+	}
 
-	fmt.Println("should be out of cards:", d.GetNextCard())
+	fmt.Println("should be out of cards:")
+	fmt.Println(deck.Pop())
 
 	return g
 }
@@ -153,7 +168,7 @@ func (g *Game) Grab(p *player, typ uint8, idx int) {
 		return
 	}
 	log.Printf("[game] Got GRAB from %s, type=%d, index=%d\n", p, typ, idx)
-	if p.holding != nil {
+	if p.holding == cards.Nothing {
 		log.Println("[game] Player is already holding something, try again? (N/n)")
 		return
 	}
@@ -173,15 +188,16 @@ func (g *Game) Drop(p *player, typ uint8, idx int) {
 		return
 	}
 	log.Printf("[game] Got DROP from %s, type=%d, index=%d\n", p, typ, idx)
-	defer func() { p.holding = nil }()
+	card := p.holding
+	p.holding = cards.Nothing
 	if typ == STACK_TYPE_CENTER {
-		if p.holding == nil {
+		if card == cards.Nothing {
 			log.Println("[game] Player not holding anything, pointless!")
 			return
 		}
 		top, _ := g.centerStacks[idx].Top()
-		log.Printf("[game] top=%s, holding=%s, nextto=%b\n", top, p.holding, p.holding.NextTo(top))
-		if p.holding.NextTo(top) {
+		log.Printf("[game] top=%s, holding=%s, nextto=%b\n", top, p.holding, p.holding.NextTo(&top))
+		if p.holding.NextTo(&top) {
 			g.centerStacks[idx].Push(p.holding)
 			log.Println("Someone actually made a legit move")
 		}
@@ -193,13 +209,13 @@ func (g *Game) Discard(p *player) {
 	if g.state != STATE_PLAY {
 		return
 	}
-	p.holding = nil
+	p.holding = cards.Nothing
 }
 
 func (g *Game) CheckWinConditions() {
 	cardsLeft := 0
 	for _, stack := range g.p1Stacks {
-		cardsLeft += stack.Len()
+		cardsLeft += stack.Size()
 	}
 	log.Println("Player 1 cards left:", cardsLeft)
 	if cardsLeft == 0 {
@@ -208,7 +224,7 @@ func (g *Game) CheckWinConditions() {
 		return
 	}
 	for _, stack := range g.p2Stacks {
-		cardsLeft += stack.Len()
+		cardsLeft += stack.Size()
 	}
 	log.Println("Player 2 cards left:", cardsLeft)
 	if cardsLeft == 0 {
